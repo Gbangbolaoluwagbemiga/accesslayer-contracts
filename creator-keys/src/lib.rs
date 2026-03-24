@@ -1,6 +1,14 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String};
+use soroban_sdk::{contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String};
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ContractError {
+    AlreadyRegistered = 1,
+    NotRegistered = 2,
+}
 
 #[derive(Clone)]
 #[contracttype]
@@ -21,10 +29,14 @@ pub struct CreatorKeysContract;
 
 #[contractimpl]
 impl CreatorKeysContract {
-    pub fn register_creator(env: Env, creator: Address, handle: String) {
+    pub fn register_creator(env: Env, creator: Address, handle: String) -> Result<(), ContractError> {
         creator.require_auth();
 
         let key = DataKey::Creator(creator.clone());
+        if env.storage().persistent().has(&key) {
+            return Err(ContractError::AlreadyRegistered);
+        }
+
         let profile = CreatorProfile {
             creator,
             handle,
@@ -33,9 +45,11 @@ impl CreatorKeysContract {
 
         env.storage().persistent().set(&key, &profile);
         env.events().publish((symbol_short!("register"),), key);
+
+        Ok(())
     }
 
-    pub fn buy_key(env: Env, creator: Address, buyer: Address) -> u32 {
+    pub fn buy_key(env: Env, creator: Address, buyer: Address) -> Result<u32, ContractError> {
         buyer.require_auth();
 
         let key = DataKey::Creator(creator.clone());
@@ -43,14 +57,14 @@ impl CreatorKeysContract {
             .storage()
             .persistent()
             .get(&key)
-            .unwrap_or_else(|| panic!("creator not registered"));
+            .ok_or(ContractError::NotRegistered)?;
 
         profile.supply += 1;
         env.storage().persistent().set(&key, &profile);
         env.events()
             .publish((symbol_short!("buy"), creator, buyer), profile.supply);
 
-        profile.supply
+        Ok(profile.supply)
     }
 
     pub fn get_creator(env: Env, creator: Address) -> Option<CreatorProfile> {
@@ -58,3 +72,6 @@ impl CreatorKeysContract {
         env.storage().persistent().get(&key)
     }
 }
+
+#[cfg(test)]
+mod test;
