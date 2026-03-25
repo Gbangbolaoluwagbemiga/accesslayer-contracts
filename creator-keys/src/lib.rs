@@ -1,6 +1,8 @@
 #![no_std]
 
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String};
+use soroban_sdk::{
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env, String,
+};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -29,7 +31,11 @@ pub struct CreatorKeysContract;
 
 #[contractimpl]
 impl CreatorKeysContract {
-    pub fn register_creator(env: Env, creator: Address, handle: String) -> Result<(), ContractError> {
+    pub fn register_creator(
+        env: Env,
+        creator: Address,
+        handle: String,
+    ) -> Result<(), ContractError> {
         creator.require_auth();
 
         let key = DataKey::Creator(creator.clone());
