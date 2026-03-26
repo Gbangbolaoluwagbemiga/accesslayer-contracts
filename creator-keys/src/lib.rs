@@ -181,7 +181,11 @@ impl CreatorKeysContract {
     /// default values are provided for other fields.
     pub fn get_creator_details(env: Env, creator: Address) -> CreatorDetailsView {
         let key = DataKey::Creator(creator.clone());
-        match env.storage().persistent().get::<DataKey, CreatorProfile>(&key) {
+        match env
+            .storage()
+            .persistent()
+            .get::<DataKey, CreatorProfile>(&key)
+        {
             Some(profile) => CreatorDetailsView {
                 creator: profile.creator,
                 handle: profile.handle,
