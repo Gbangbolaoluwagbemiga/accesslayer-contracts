@@ -175,3 +175,60 @@ fn test_get_key_balance_returns_zero_for_unregistered_wallet() {
     let balance = client.get_key_balance(&creator, &unregistered_wallet);
     assert_eq!(balance, 0);
 }
+
+#[test]
+fn test_get_creator_fee_config_returns_defaults_for_unregistered() {
+    let env = Env::default();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let unregistered_creator = Address::generate(&env);
+
+    let fee_view = client.get_creator_fee_config(&unregistered_creator);
+    assert!(!fee_view.is_registered);
+    assert!(!fee_view.is_configured);
+    assert_eq!(fee_view.creator_bps, 0);
+    assert_eq!(fee_view.protocol_bps, 0);
+}
+
+#[test]
+fn test_get_treasury_address_returns_none_initially() {
+    let env = Env::default();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let result = client.get_treasury_address();
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_get_treasury_address_returns_set_address() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let treasury = Address::generate(&env);
+    client.set_treasury_address(&admin, &treasury);
+
+    let result = client.get_treasury_address();
+    assert_eq!(result, Some(treasury));
+}
+
+#[test]
+fn test_get_treasury_address_persists_across_reads() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(CreatorKeysContract, ());
+    let client = CreatorKeysContractClient::new(&env, &contract_id);
+
+    let admin = Address::generate(&env);
+    let treasury = Address::generate(&env);
+    client.set_treasury_address(&admin, &treasury);
+
+    let first_read = client.get_treasury_address();
+    let second_read = client.get_treasury_address();
+    assert_eq!(first_read, second_read);
+    assert_eq!(first_read, Some(treasury));
+}
