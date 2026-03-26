@@ -65,6 +65,19 @@ pub struct ProtocolFeeView {
     pub is_configured: bool,
 }
 
+/// Stable, non-optional view of creator details.
+///
+/// Returned by [`CreatorKeysContract::get_creator_details`] for indexer-friendly consumption.
+/// When `is_registered` is `false`, default values are returned for other fields.
+#[derive(Clone)]
+#[contracttype]
+pub struct CreatorDetailsView {
+    pub creator: Address,
+    pub handle: String,
+    pub supply: u32,
+    pub is_registered: bool,
+}
+
 #[derive(Clone)]
 #[contracttype]
 pub enum DataKey {
@@ -159,6 +172,29 @@ impl CreatorKeysContract {
     pub fn get_creator(env: Env, creator: Address) -> Option<CreatorProfile> {
         let key = DataKey::Creator(creator);
         env.storage().persistent().get(&key)
+    }
+
+    /// Read-only view: returns stable creator details.
+    ///
+    /// Returns a [`CreatorDetailsView`] regardless of registration status.
+    /// When the creator is not registered, `is_registered` is `false` and
+    /// default values are provided for other fields.
+    pub fn get_creator_details(env: Env, creator: Address) -> CreatorDetailsView {
+        let key = DataKey::Creator(creator.clone());
+        match env.storage().persistent().get::<DataKey, CreatorProfile>(&key) {
+            Some(profile) => CreatorDetailsView {
+                creator: profile.creator,
+                handle: profile.handle,
+                supply: profile.supply,
+                is_registered: true,
+            },
+            None => CreatorDetailsView {
+                creator,
+                handle: String::from_str(&env, ""),
+                supply: 0,
+                is_registered: false,
+            },
+        }
     }
 
     /// Read-only view: returns the total key supply for a creator.
